@@ -8,6 +8,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/ChanatpakornS/Fytini/fyt/config"
 	"github.com/ChanatpakornS/Fytini/fyt/internal/domain/url"
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/cors"
@@ -15,6 +16,8 @@ import (
 )
 
 func main() {
+	cfg := config.Load()
+
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
@@ -33,7 +36,7 @@ func main() {
 	urlHandler.Mount(v1)
 
 	go func() {
-		if err := app.Listen(fmt.Sprintf(":%d", 3000)); err != nil {
+		if err := app.Listen(fmt.Sprintf(":%d", cfg.App.Port)); err != nil {
 			fmt.Println("failed to start server", err)
 			stop()
 		}
