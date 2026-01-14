@@ -1,0 +1,19 @@
+version: "3.8"
+
+name: fytini
+
+services:
+  fytini-postgres:
+    image: postgres:latest
+    container_name: fytini-postgres
+    environment:
+      POSTGRES_USER: gorm
+      POSTGRES_PASSWORD: gorm
+      POSTGRES_DB: gorm
+    ports:
+      - "1234:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/v18/data
+
+volumes:
+  postgres_data:

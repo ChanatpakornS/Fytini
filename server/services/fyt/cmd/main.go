@@ -8,8 +8,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ChanatpakornS/Fytini/fyt/config"
-	"github.com/ChanatpakornS/Fytini/fyt/internal/domain/url"
+	"Fytini/fyt/config"
+	"Fytini/fyt/internal/handler/url"
+	"Fytini/fyt/internal/validator"
+
+	"Fytini/pkg/postgres"
+
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/cors"
 	"github.com/gofiber/fiber/v3/middleware/healthcheck"
@@ -21,6 +25,17 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
+	// Connect to database and migration
+	db, err := postgres.Open()
+	if err != nil {
+		panic(err)
+	}
+	if err := postgres.Migrate(db); err != nil {
+		panic(err)
+	}
+
+	validator := validator.New()
+
 	app := fiber.New()
 
 	// middleware
@@ -28,12 +43,10 @@ func main() {
 	app.All("/healthz", healthcheck.New())
 
 	// Initialize handler
-	urlHandler := url.NewHandler()
+	urlHandler := url.NewHandler(validator, db)
 
 	// Mount endpoint
-	api := app.Group("/api")
-	v1 := api.Group("/v1")
-	urlHandler.Mount(v1)
+	urlHandler.Mount(app)
 
 	go func() {
 		if err := app.Listen(fmt.Sprintf(":%d", cfg.App.Port)); err != nil {
