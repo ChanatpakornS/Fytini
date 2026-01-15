@@ -1,0 +1,9 @@
+app:
+  name: Pirareus
+  port: 8000
+
+services:
+  tini:
+    url: http://localhost:9001
+  fyt:
+    url: http://localhost:9000
