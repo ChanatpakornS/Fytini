@@ -27,7 +27,7 @@ func (h *Handler) CreateNewShortURL(c fiber.Ctx) error {
 	// repo
 	if err := h.db.Transaction(func(tx *gorm.DB) error {
 		newShortenURL := db.Url{
-			Url:         req.Url,
+			Url:         "/" + req.Url,
 			CustomAlias: req.CustomAlias,
 		}
 		if req.ExpirationDate != "" {
