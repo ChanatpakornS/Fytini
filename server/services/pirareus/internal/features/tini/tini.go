@@ -3,6 +3,7 @@ package tini
 import (
 	"Fytini/pirareus/config"
 	"Fytini/pirareus/internal/client"
+	"encoding/json"
 
 	"github.com/gofiber/fiber/v3"
 )
@@ -21,43 +22,76 @@ func NewServer(cfg *config.Config) *Server {
 
 func (s *Server) Mount(r fiber.Router) {
 	tiniGroup := r.Group("/tini")
-	tiniGroup.Get("/url/redirect", s.RedirectURL)
+	tiniGroup.Post("/url/redirect", s.RedirectURL)
+}
+
+type GetShortenUrlRequest struct {
+	CustomAlias string `json:"custom_alias"`
+}
+
+type GetShortenUrlResponse struct {
+	Url string `json:"url"`
 }
 
 func (s *Server) RedirectURL(c fiber.Ctx) error {
-	// Get query parameters
-	customAlias := c.Query("custom_alias")
-	if customAlias == "" {
+	// Parse request body
+	var req GetShortenUrlRequest
+	if err := c.Bind().JSON(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "invalid request body",
+		})
+	}
+
+	// Validate required fields
+	if req.CustomAlias == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "custom_alias is required",
 		})
 	}
 
-	// Prepare query params
-	queryParams := map[string]string{
-		"custom_alias": customAlias,
-	}
-
-	// Proxy redirect request to Tini service
-	location, statusCode, err := s.client.ProxyRedirect("/url/redirect", queryParams)
+	// Proxy request to Tini service
+	body, statusCode, err := s.client.Post("/url/redirect", req)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": "failed to communicate with redirect service",
 		})
 	}
 
-	// Handle different status codes
+	// Handle not found
 	if statusCode == fiber.StatusNotFound {
+		// Try to parse error response
+		var errorResponse map[string]interface{}
+		if err := json.Unmarshal(body, &errorResponse); err == nil {
+			return c.Status(statusCode).JSON(errorResponse)
+		}
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
 			"error": "URL not found",
 		})
 	}
 
-	if statusCode >= 300 && statusCode < 400 && location != "" {
-		// Proxy the redirect to the client
-		return c.Redirect().Status(statusCode).To(location)
+	// Handle success response
+	if statusCode == fiber.StatusOK {
+		var urlResponse GetShortenUrlResponse
+		if err := json.Unmarshal(body, &urlResponse); err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": "failed to parse response from redirect service",
+			})
+		}
+
+		// Return the URL
+		return c.Status(fiber.StatusOK).JSON(fiber.Map{
+			"url": urlResponse.Url,
+		})
 	}
 
-	// Forward the response as-is for other status codes
+	// For other error responses, try to parse and forward the error message
+	if len(body) > 0 {
+		var errorResponse map[string]interface{}
+		if err := json.Unmarshal(body, &errorResponse); err == nil {
+			return c.Status(statusCode).JSON(errorResponse)
+		}
+	}
+
+	// Fallback: just forward the status code
 	return c.SendStatus(statusCode)
 }

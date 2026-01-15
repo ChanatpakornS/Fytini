@@ -11,7 +11,7 @@ import (
 func (h *Handler) GetShortenURL(c fiber.Ctx) error {
 	// pre-function
 	req := dto.GetShortenUrlRequest{}
-	if err := c.Bind().All(&req); err != nil {
+	if err := c.Bind().JSON(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": err.Error(),
 		})
@@ -32,8 +32,9 @@ func (h *Handler) GetShortenURL(c fiber.Ctx) error {
 		})
 	}
 
-	// fiber.StatusFound = 302 (Analytics friendly)
-	// fiber.StatusMovedPermanently = 301 (Cache friendly)
-	return c.Redirect().To(originURL.Url)
+	// Return the URL in JSON format instead of redirecting
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"url": originURL.Url,
+	})
 
 }

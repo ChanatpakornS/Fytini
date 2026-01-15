@@ -21,5 +21,5 @@ func NewHandler(validate *validator.Validate, db *gorm.DB) *Handler {
 
 func (h *Handler) Mount(r fiber.Router) {
 	urlPrefix := r.Group("/url")
-	urlPrefix.Get("/redirect", h.GetShortenURL)
+	urlPrefix.Post("/redirect", h.GetShortenURL)
 }
