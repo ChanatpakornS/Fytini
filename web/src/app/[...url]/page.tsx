@@ -24,14 +24,22 @@ export default function RedirectPage() {
 
       try {
         // Fetch the original URL from the backend
-        const originalUrl = await GetShortenURL(customAlias);
+        const result = await GetShortenURL(customAlias);
 
-        if (originalUrl) {
-          // Redirect to the original URL (already normalized by API)
-          window.location.href = originalUrl;
+        if (result.status === "success" && result.url) {
+          // Redirect to the original URL
+          window.location.href = result.url;
+        } else if (result.status === "expired") {
+          setError("This URL has expired");
+          setIsLoading(false);
+        } else if (result.status === "not_found") {
+          setError("URL not found");
+          setIsLoading(false);
         } else {
-          console.error("No URL returned from API");
-          setError("URL not found or has expired");
+          console.error("No URL returned from API or error occurred");
+          setError(
+            result.message || "An error occurred while fetching the URL",
+          );
           setIsLoading(false);
         }
       } catch (err) {

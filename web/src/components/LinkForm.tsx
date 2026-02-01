@@ -2,7 +2,6 @@
 
 import { CreateNewShortenURL } from "@/api/url";
 import { Button } from "@/components/Button";
-import { formatExpirationDate } from "@/utils/date";
 import { isValidURL } from "@/utils/url";
 import { useState } from "react";
 
@@ -57,9 +56,10 @@ function LinkForm() {
       const payload = {
         url: normalizedUrl,
         custom_alias: alias,
-        expiration_date: expiration ? formatExpirationDate(expiration) : "",
+        expiration_date: expiration ?? "",
       };
 
+      console.log(payload);
       const response = await CreateNewShortenURL(payload);
 
       if (response.error) {

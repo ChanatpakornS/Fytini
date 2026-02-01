@@ -2,6 +2,7 @@ package url
 
 import (
 	"Fytini/db"
+	"time"
 
 	"Fytini/fyt/internal/dto"
 
@@ -24,15 +25,25 @@ func (h *Handler) CreateNewShortURL(c fiber.Ctx) error {
 		})
 	}
 
+	var expirationTime *time.Time
+	if req.ExpirationDate != "" {
+		parsedTime, err := time.Parse("2006-01-02T15:04", req.ExpirationDate)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": "Field validation for 'ExpirationDate' failed on the 'datetime' tag",
+			})
+		}
+		expirationTime = &parsedTime
+	}
+
 	// repo
 	if err := h.db.Transaction(func(tx *gorm.DB) error {
 		newShortenURL := db.Url{
-			Url:         req.Url,
-			CustomAlias: req.CustomAlias,
+			Url:            req.Url,
+			CustomAlias:    req.CustomAlias,
+			ExpirationDate: expirationTime,
 		}
-		if req.ExpirationDate != "" {
-			newShortenURL.ExpirationDate = req.ExpirationDate
-		}
+
 		if err := tx.Create(&newShortenURL).Error; err != nil {
 			return err
 		}

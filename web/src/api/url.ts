@@ -4,6 +4,12 @@ import { CreateShortenURLRequest, CreateShortenURLResponse } from "@/types/api";
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const API_VERSION = "/api/v1";
 
+export type GetUrlResult = {
+  url: string | null;
+  status: "success" | "expired" | "not_found" | "error";
+  message?: string;
+};
+
 // API Functions
 export async function CreateNewShortenURL(
   data: CreateShortenURLRequest,
@@ -39,7 +45,7 @@ export async function CreateNewShortenURL(
 
 export async function GetShortenURL(
   custom_alias: string,
-): Promise<string | null> {
+): Promise<GetUrlResult> {
   try {
     const response = await fetch(
       `${API_BASE_URL}${API_VERSION}/tini/url/redirect`,
@@ -61,27 +67,34 @@ export async function GetShortenURL(
 
       console.log("Received URL from API:", url);
 
-      // Return the URL as-is (already normalized when created)
-      return url || null;
+      return { url: url, status: "success" };
     }
 
-    // If not found or error
+    // If not found
     if (response.status === 404) {
       console.error("URL not found");
-      return null;
+      return { url: null, status: "not_found" };
+    }
+
+    // If expired
+    if (response.status === 410) {
+      console.warn("URL has expired");
+      return { url: null, status: "expired" };
     }
 
     // Try to parse error response
+    let errorMessage = response.statusText;
     try {
       const errorData = await response.json();
-      console.error("Error getting shortened URL:", errorData.error);
+      errorMessage = errorData.error || errorMessage;
+      console.error("Error getting shortened URL:", errorMessage);
     } catch {
-      console.error("Error getting shortened URL:", response.statusText);
+      console.error("Error getting shortened URL:", errorMessage);
     }
 
-    return null;
+    return { url: null, status: "error", message: errorMessage };
   } catch (error) {
     console.error("Error fetching redirect URL:", error);
-    return null;
+    return { url: null, status: "error", message: "Network error" };
   }
 }

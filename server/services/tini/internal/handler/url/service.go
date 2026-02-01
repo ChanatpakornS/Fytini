@@ -2,6 +2,7 @@ package url
 
 import (
 	"Fytini/db"
+	"time"
 
 	"Fytini/tini/internal/dto"
 
@@ -30,6 +31,18 @@ func (h *Handler) GetShortenURL(c fiber.Ctx) error {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
 			"error": result.Error.Error(),
 		})
+	}
+
+	if originURL.ExpirationDate != nil {
+		if time.Now().After(*originURL.ExpirationDate) {
+			status := fiber.StatusNotFound
+			if originURL.ExpirationDate.Before(time.Now()) {
+				status = fiber.StatusGone
+			}
+			return c.Status(status).JSON(fiber.Map{
+				"error": "URL expired",
+			})
+		}
 	}
 
 	// Return the URL in JSON format instead of redirecting
